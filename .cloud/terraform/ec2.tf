@@ -62,7 +62,7 @@ resource "aws_instance" "web_vm" {
             EOF
 }
 
-resource "aws_instance" "web_vm" {
+resource "aws_instance" "attack_vm" {
   ami           = "ami-12345678"
   instance_type = "t2.micro"
   subnet_id     = aws_subnet.private_subnet.id
@@ -70,7 +70,7 @@ resource "aws_instance" "web_vm" {
   private_ip    = "10.0.1.20"
 
   tags = {
-    Name = "Web-VM"
+    Name = "Attack-VM"
   }
 
   user_data = <<-EOF
