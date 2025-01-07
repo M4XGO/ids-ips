@@ -1,5 +1,5 @@
 resource "aws_instance" "suricata_vm" {
-  ami           = "ami-12345678" # Remplacez par l'AMI de votre choix (Ubuntu/Debian)
+  ami           = "ami-078844d9356af3427" # Remplacez par l'AMI de votre choix (Ubuntu/Debian)
   instance_type = "t2.micro"
   subnet_id     = aws_subnet.private_subnet.id
   key_name      = "my-key-pair"
@@ -44,7 +44,7 @@ resource "aws_instance" "suricata_vm" {
 }
 
 resource "aws_instance" "web_vm" {
-  ami           = "ami-12345678"
+  ami           = "ami-078844d9356af3427"
   instance_type = "t2.micro"
   subnet_id     = aws_subnet.private_subnet.id
   key_name      = "my-key-pair"
@@ -63,7 +63,7 @@ resource "aws_instance" "web_vm" {
 }
 
 resource "aws_instance" "attack_vm" {
-  ami           = "ami-12345678"
+  ami           = "ami-078844d9356af3427"
   instance_type = "t2.micro"
   subnet_id     = aws_subnet.private_subnet.id
   key_name      = "my-key-pair"

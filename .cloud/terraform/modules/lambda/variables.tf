@@ -12,3 +12,8 @@ variable "source_code_path" {
   description = "Chemin vers le fichier zip du code source de la Lambda"
   type        = string
 }
+
+variable "log_group_name" {
+  description = "Nom du groupe de logs CloudWatch"
+  type        = string
+}

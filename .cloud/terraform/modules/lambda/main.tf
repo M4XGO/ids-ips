@@ -15,10 +15,11 @@ resource "aws_lambda_function" "my_lambda" {
 
 resource "aws_cloudwatch_log_subscription_filter" "suricata_logs_to_lambda" {
   name            = "suricata_logs_to_lambda"
-  log_group_name  = aws_cloudwatch_log_group.suricata_logs.name
+  log_group_name  = var.log_group_name
   filter_pattern  = ""
   destination_arn = aws_lambda_function.my_lambda.arn
   role_arn        = aws_iam_role.lambda_role.arn
+
 }
 
 resource "aws_iam_role" "lambda_role" {
