@@ -174,6 +174,7 @@ resource "aws_instance" "bastion" {
   key_name                    = "deployer-key"
   associate_public_ip_address = true
   iam_instance_profile        = aws_iam_instance_profile.ec2_ssm_instance_profile.name
+  vpc_security_group_ids      = [aws_security_group.bastion_sg.id]
 
   tags = {
     Name = "Bastion-Host"
