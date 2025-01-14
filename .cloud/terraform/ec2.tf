@@ -1,6 +1,9 @@
+############ SURICATA VM ############
+
 resource "aws_network_interface" "suricata_vm_eni_private" {
   subnet_id   = aws_subnet.private_subnet.id
   private_ips = ["10.0.1.10"]
+  security_groups = [aws_security_group.vm_sg.id]
 
   tags = {
     Name = "Suricata-VM-ENI-Private"
@@ -10,6 +13,7 @@ resource "aws_network_interface" "suricata_vm_eni_private" {
 resource "aws_network_interface" "suricata_vm_eni_public" {
   subnet_id   = aws_subnet.public_subnet.id
   private_ips = ["10.0.0.10"]
+  security_groups = [aws_security_group.vm_sg.id]
 
   tags = {
     Name = "Suricata-VM-ENI-Public"
@@ -71,9 +75,12 @@ resource "aws_instance" "suricata_vm" {
             EOF
 }
 
+
+############ Web VM ############
 resource "aws_network_interface" "web_vm_eni_private" {
   subnet_id   = aws_subnet.private_subnet.id
   private_ips = ["10.0.1.30"]
+  security_groups = [aws_security_group.vm_sg.id]
 
   tags = {
     Name = "WEB-VM-ENI-Private"
@@ -83,6 +90,7 @@ resource "aws_network_interface" "web_vm_eni_private" {
 resource "aws_network_interface" "web_vm_eni_public" {
   subnet_id   = aws_subnet.public_subnet.id
   private_ips = ["10.0.0.30"]
+  security_groups = [aws_security_group.vm_sg.id]
 
   tags = {
     Name = "WEB-VM-ENI-Public"
@@ -118,9 +126,12 @@ resource "aws_instance" "web_vm" {
             EOF
 }
 
+
+############ ATTACK VM ############
 resource "aws_network_interface" "attack_vm_eni_private" {
   subnet_id   = aws_subnet.private_subnet.id
   private_ips = ["10.0.1.20"]
+  security_groups = [aws_security_group.vm_sg.id]
 
   tags = {
     Name = "Attack-VM-ENI-Private"
@@ -130,6 +141,7 @@ resource "aws_network_interface" "attack_vm_eni_private" {
 resource "aws_network_interface" "attack_vm_eni_public" {
   subnet_id   = aws_subnet.public_subnet.id
   private_ips = ["10.0.0.20"]
+  security_groups = [aws_security_group.vm_sg.id]
 
   tags = {
     Name = "Attack-VM-ENI-Public"
