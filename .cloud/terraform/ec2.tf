@@ -1,25 +1,34 @@
-# Other network interface to use with the bastion to allow access to the internet
-resource "aws_network_interface" "suricata_vm_eni" {
+resource "aws_network_interface" "suricata_vm_eni_private" {
   subnet_id   = aws_subnet.private_subnet.id
-  private_ips = ["10.0.1.11"]
+  private_ips = ["10.0.1.10"]
 
   tags = {
-    Name = "Suricata-VM-ENI"
+    Name = "Suricata-VM-ENI-Private"
+  }
+}
+
+resource "aws_network_interface" "suricata_vm_eni_public" {
+  subnet_id   = aws_subnet.public_subnet.id
+  private_ips = ["10.0.0.10"]
+
+  tags = {
+    Name = "Suricata-VM-ENI-Public"
   }
 }
 
 resource "aws_instance" "suricata_vm" {
   ami                  = "ami-08da5407960580f18"
   instance_type        = "t2.micro"
-  subnet_id            = aws_subnet.private_subnet.id
   key_name             = "deployer-key"
-  private_ip           = "10.0.1.10"
   iam_instance_profile = aws_iam_instance_profile.ec2_ssm_instance_profile.name
   network_interface {
-    network_interface_id = aws_network_interface.suricata_vm_eni.id
+    network_interface_id = aws_network_interface.suricata_vm_eni_private.id
     device_index         = 1
   }
-
+  network_interface {
+    network_interface_id = aws_network_interface.suricata_vm_eni_public.id
+    device_index         = 0
+  }
 
   tags = {
     Name = "Suricata-VM"
@@ -27,7 +36,6 @@ resource "aws_instance" "suricata_vm" {
 
   user_data = <<-EOF
               #!/bin/bash
-              # Mise à jour des paquets
               apt update -y
               apt install -y suricata iptables iptables-persistent
 
@@ -50,9 +58,9 @@ resource "aws_instance" "suricata_vm" {
                   bypass: yes
               EOT
 
-              # Rediriger le trafic HTTP (port 80) vers la VM Web (10.0.1.2)
-              iptables -t nat -A PREROUTING -p tcp --dport 80 -j DNAT --to-destination 10.0.1.2:80
-              iptables -A FORWARD -p tcp -d 10.0.1.2 --dport 80 -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
+              # Rediriger le trafic HTTP (port 80) vers la VM Web (10.0.1.30)
+              iptables -t nat -A PREROUTING -p tcp --dport 80 -j DNAT --to-destination 10.0.1.30:80
+              iptables -A FORWARD -p tcp -d 10.0.1.30 --dport 80 -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
 
               # Sauvegarder la configuration iptables
               iptables-save > /etc/iptables/rules.v4
@@ -63,26 +71,36 @@ resource "aws_instance" "suricata_vm" {
             EOF
 }
 
-# Other network interface to use with the bastion to allow access to the internet
-resource "aws_network_interface" "web_vm_eni" {
+resource "aws_network_interface" "web_vm_eni_private" {
   subnet_id   = aws_subnet.private_subnet.id
-  private_ips = ["10.0.1.31"]
+  private_ips = ["10.0.1.30"]
 
   tags = {
-    Name = "WEB-VM-ENI"
+    Name = "WEB-VM-ENI-Private"
+  }
+}
+
+resource "aws_network_interface" "web_vm_eni_public" {
+  subnet_id   = aws_subnet.public_subnet.id
+  private_ips = ["10.0.0.30"]
+
+  tags = {
+    Name = "WEB-VM-ENI-Public"
   }
 }
 
 resource "aws_instance" "web_vm" {
-  ami                  = "ami-08da5407960580f18" # Replace with a valid AMI ID
+  ami                  = "ami-08da5407960580f18"
   instance_type        = "t2.micro"
-  subnet_id            = aws_subnet.private_subnet.id
   key_name             = "deployer-key"
-  private_ip           = "10.0.1.30"
   iam_instance_profile = aws_iam_instance_profile.ec2_ssm_instance_profile.name
   network_interface {
-    network_interface_id = aws_network_interface.web_vm_eni.id
+    network_interface_id = aws_network_interface.web_vm_eni_private.id
     device_index         = 1
+  }
+  network_interface {
+    network_interface_id = aws_network_interface.web_vm_eni_public.id
+    device_index         = 0
   }
 
   tags = {
@@ -100,28 +118,37 @@ resource "aws_instance" "web_vm" {
             EOF
 }
 
-# Other network interface to use with the bastion to allow access to the internet
-resource "aws_network_interface" "attack_vm_eni" {
+resource "aws_network_interface" "attack_vm_eni_private" {
   subnet_id   = aws_subnet.private_subnet.id
-  private_ips = ["10.0.1.21"]
+  private_ips = ["10.0.1.20"]
 
   tags = {
-    Name = "Attack-VM-ENI"
+    Name = "Attack-VM-ENI-Private"
+  }
+}
+
+resource "aws_network_interface" "attack_vm_eni_public" {
+  subnet_id   = aws_subnet.public_subnet.id
+  private_ips = ["10.0.0.20"]
+
+  tags = {
+    Name = "Attack-VM-ENI-Public"
   }
 }
 
 resource "aws_instance" "attack_vm" {
   ami                  = "ami-08da5407960580f18"
   instance_type        = "t2.micro"
-  subnet_id            = aws_subnet.private_subnet.id
   key_name             = "deployer-key"
-  private_ip           = "10.0.1.20"
   iam_instance_profile = aws_iam_instance_profile.ec2_ssm_instance_profile.name
   network_interface {
-    network_interface_id = aws_network_interface.attack_vm_eni.id
+    network_interface_id = aws_network_interface.attack_vm_eni_private.id
     device_index         = 1
   }
-
+  network_interface {
+    network_interface_id = aws_network_interface.attack_vm_eni_public.id
+    device_index         = 0
+  }
 
   tags = {
     Name = "Attack-VM"
@@ -137,5 +164,35 @@ resource "aws_instance" "attack_vm" {
               docker pull kalilinux/kali-rolling
               docker run -it kalilinux/kali-rolling /bin/bash
               apt update && apt -y install kali-linux-headless
+            EOF
+}
+
+resource "aws_instance" "bastion" {
+  ami                         = "ami-08da5407960580f18"
+  instance_type               = "t2.micro"
+  subnet_id                   = aws_subnet.public_subnet.id
+  key_name                    = "deployer-key"
+  associate_public_ip_address = true
+  iam_instance_profile        = aws_iam_instance_profile.ec2_ssm_instance_profile.name
+
+  tags = {
+    Name = "Bastion-Host"
+  }
+
+  user_data = <<-EOF
+              #!/bin/bash
+              apt update -y
+              apt install -y amazon-ssm-agent iptables iptables-persistent
+              sudo systemctl enable amazon-ssm-agent
+              sudo systemctl start amazon-ssm-agent
+
+              # Activer le forwarding réseau
+              echo 1 > /proc/sys/net/ipv4/ip_forward
+              sed -i 's/#net.ipv4.ip_forward=1/net.ipv4/ip_forward=1/' /etc/sysctl.conf
+              sysctl -p
+
+              # Configurer iptables pour le NAT
+              iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+              iptables-save > /etc/iptables/rules.v4
             EOF
 }
