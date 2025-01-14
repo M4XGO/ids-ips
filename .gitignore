@@ -1,2 +1,5 @@
 .cloud/terraform/.aws/
 .cloud/terraform/.terraform/
+deployer-key.pem
+deployer-key.pem.pub
+terraform.tfstate.backup
