@@ -1,9 +1,11 @@
 resource "aws_instance" "suricata_vm" {
-  ami           = "ami-078844d9356af3427" # Remplacez par l'AMI de votre choix (Ubuntu/Debian)
+  ami           = "ami-08da5407960580f18" # Remplacez par l'AMI de votre choix (Ubuntu/Debian)
   instance_type = "t2.micro"
   subnet_id     = aws_subnet.private_subnet.id
-  key_name      = "my-key-pair"
+  key_name      = "deployer-key"
   private_ip    = "10.0.1.10"
+  iam_instance_profile = aws_iam_instance_profile.ec2_ssm_instance_profile.name
+
 
   tags = {
     Name = "Suricata-VM"
@@ -14,6 +16,10 @@ resource "aws_instance" "suricata_vm" {
               # Mise à jour des paquets
               apt update -y
               apt install -y suricata iptables iptables-persistent
+
+              sudo apt install -y amazon-ssm-agent
+              sudo systemctl enable amazon-ssm-agent
+              sudo systemctl start amazon-ssm-agent
 
               # Activer le forwarding réseau
               echo 1 > /proc/sys/net/ipv4/ip_forward
@@ -44,11 +50,13 @@ resource "aws_instance" "suricata_vm" {
 }
 
 resource "aws_instance" "web_vm" {
-  ami           = "ami-078844d9356af3427"
+  ami           = "ami-08da5407960580f18" # Replace with a valid AMI ID
   instance_type = "t2.micro"
   subnet_id     = aws_subnet.private_subnet.id
-  key_name      = "my-key-pair"
-  private_ip    = "10.0.1.2"
+  key_name      = "deployer-key"
+  private_ip    = "10.0.1.21"
+  iam_instance_profile = aws_iam_instance_profile.ec2_ssm_instance_profile.name
+
 
   tags = {
     Name = "Web-VM"
@@ -58,16 +66,21 @@ resource "aws_instance" "web_vm" {
               #!/bin/bash
               apt update -y
               apt install -y docker.io
+              sudo apt install -y amazon-ssm-agent
+              sudo systemctl enable amazon-ssm-agent
+              sudo systemctl start amazon-ssm-agent
               docker run -d -p 80:80 nginx
             EOF
 }
 
 resource "aws_instance" "attack_vm" {
-  ami           = "ami-078844d9356af3427"
+  ami           = "ami-08da5407960580f18"
   instance_type = "t2.micro"
   subnet_id     = aws_subnet.private_subnet.id
-  key_name      = "my-key-pair"
+  key_name      = "deployer-key"
   private_ip    = "10.0.1.20"
+  iam_instance_profile = aws_iam_instance_profile.ec2_ssm_instance_profile.name
+
 
   tags = {
     Name = "Attack-VM"
@@ -77,6 +90,9 @@ resource "aws_instance" "attack_vm" {
               #!/bin/bash
               apt update -y
               apt install -y docker.io
+              sudo apt install -y amazon-ssm-agent
+              sudo systemctl enable amazon-ssm-agent
+              sudo systemctl start amazon-ssm-agent
               docker pull kalilinux/kali-rolling
               docker run -it kalilinux/kali-rolling /bin/bash
               apt update && apt -y install kali-linux-headless
