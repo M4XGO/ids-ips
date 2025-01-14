@@ -17,3 +17,11 @@ variable "log_group_name" {
   description = "Nom du groupe de logs CloudWatch"
   type        = string
 }
+
+variable "region" {
+  default = "eu-west-3"
+  description = "value of the region"
+  type = string
+}
+
+data "aws_caller_identity" "current" {}
