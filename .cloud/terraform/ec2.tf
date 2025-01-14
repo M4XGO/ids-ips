@@ -1,10 +1,24 @@
+# Other network interface to use with the bastion to allow access to the internet
+resource "aws_network_interface" "suricata_vm_eni" {
+  subnet_id   = aws_subnet.private_subnet.id
+  private_ips = ["10.0.1.11"]
+
+  tags = {
+    Name = "Suricata-VM-ENI"
+  }
+}
+
 resource "aws_instance" "suricata_vm" {
-  ami                  = "ami-08da5407960580f18" # Remplacez par l'AMI de votre choix (Ubuntu/Debian)
+  ami                  = "ami-08da5407960580f18"
   instance_type        = "t2.micro"
   subnet_id            = aws_subnet.private_subnet.id
   key_name             = "deployer-key"
   private_ip           = "10.0.1.10"
   iam_instance_profile = aws_iam_instance_profile.ec2_ssm_instance_profile.name
+  network_interface {
+    network_interface_id = aws_network_interface.suricata_vm_eni.id
+    device_index         = 1
+  }
 
 
   tags = {
@@ -49,14 +63,27 @@ resource "aws_instance" "suricata_vm" {
             EOF
 }
 
+# Other network interface to use with the bastion to allow access to the internet
+resource "aws_network_interface" "web_vm_eni" {
+  subnet_id   = aws_subnet.private_subnet.id
+  private_ips = ["10.0.1.31"]
+
+  tags = {
+    Name = "WEB-VM-ENI"
+  }
+}
+
 resource "aws_instance" "web_vm" {
   ami                  = "ami-08da5407960580f18" # Replace with a valid AMI ID
   instance_type        = "t2.micro"
   subnet_id            = aws_subnet.private_subnet.id
   key_name             = "deployer-key"
-  private_ip           = "10.0.1.21"
+  private_ip           = "10.0.1.30"
   iam_instance_profile = aws_iam_instance_profile.ec2_ssm_instance_profile.name
-
+  network_interface {
+    network_interface_id = aws_network_interface.web_vm_eni.id
+    device_index         = 1
+  }
 
   tags = {
     Name = "Web-VM"
@@ -73,6 +100,16 @@ resource "aws_instance" "web_vm" {
             EOF
 }
 
+# Other network interface to use with the bastion to allow access to the internet
+resource "aws_network_interface" "attack_vm_eni" {
+  subnet_id   = aws_subnet.private_subnet.id
+  private_ips = ["10.0.1.21"]
+
+  tags = {
+    Name = "Attack-VM-ENI"
+  }
+}
+
 resource "aws_instance" "attack_vm" {
   ami                  = "ami-08da5407960580f18"
   instance_type        = "t2.micro"
@@ -80,6 +117,10 @@ resource "aws_instance" "attack_vm" {
   key_name             = "deployer-key"
   private_ip           = "10.0.1.20"
   iam_instance_profile = aws_iam_instance_profile.ec2_ssm_instance_profile.name
+  network_interface {
+    network_interface_id = aws_network_interface.attack_vm_eni.id
+    device_index         = 1
+  }
 
 
   tags = {
@@ -96,26 +137,5 @@ resource "aws_instance" "attack_vm" {
               docker pull kalilinux/kali-rolling
               docker run -it kalilinux/kali-rolling /bin/bash
               apt update && apt -y install kali-linux-headless
-            EOF
-}
-
-resource "aws_instance" "bastion" {
-  ami                         = "ami-08da5407960580f18" # Utilisez le même AMI que vos autres VMs
-  instance_type               = "t2.micro"
-  subnet_id                   = aws_subnet.private_subnet.id
-  key_name                    = "deployer-key"
-  associate_public_ip_address = true
-  iam_instance_profile        = aws_iam_instance_profile.ec2_ssm_instance_profile.name
-
-  tags = {
-    Name = "Bastion-Host"
-  }
-
-  user_data = <<-EOF
-              #!/bin/bash
-              apt update -y
-              apt install -y amazon-ssm-agent
-              sudo systemctl enable amazon-ssm-agent
-              sudo systemctl start amazon-ssm-agent
             EOF
 }
