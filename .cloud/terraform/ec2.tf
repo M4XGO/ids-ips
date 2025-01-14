@@ -1,9 +1,9 @@
 resource "aws_instance" "suricata_vm" {
-  ami           = "ami-08da5407960580f18" # Remplacez par l'AMI de votre choix (Ubuntu/Debian)
-  instance_type = "t2.micro"
-  subnet_id     = aws_subnet.private_subnet.id
-  key_name      = "deployer-key"
-  private_ip    = "10.0.1.10"
+  ami                  = "ami-08da5407960580f18" # Remplacez par l'AMI de votre choix (Ubuntu/Debian)
+  instance_type        = "t2.micro"
+  subnet_id            = aws_subnet.private_subnet.id
+  key_name             = "deployer-key"
+  private_ip           = "10.0.1.10"
   iam_instance_profile = aws_iam_instance_profile.ec2_ssm_instance_profile.name
 
 
@@ -50,11 +50,11 @@ resource "aws_instance" "suricata_vm" {
 }
 
 resource "aws_instance" "web_vm" {
-  ami           = "ami-08da5407960580f18" # Replace with a valid AMI ID
-  instance_type = "t2.micro"
-  subnet_id     = aws_subnet.private_subnet.id
-  key_name      = "deployer-key"
-  private_ip    = "10.0.1.21"
+  ami                  = "ami-08da5407960580f18" # Replace with a valid AMI ID
+  instance_type        = "t2.micro"
+  subnet_id            = aws_subnet.private_subnet.id
+  key_name             = "deployer-key"
+  private_ip           = "10.0.1.21"
   iam_instance_profile = aws_iam_instance_profile.ec2_ssm_instance_profile.name
 
 
@@ -74,11 +74,11 @@ resource "aws_instance" "web_vm" {
 }
 
 resource "aws_instance" "attack_vm" {
-  ami           = "ami-08da5407960580f18"
-  instance_type = "t2.micro"
-  subnet_id     = aws_subnet.private_subnet.id
-  key_name      = "deployer-key"
-  private_ip    = "10.0.1.20"
+  ami                  = "ami-08da5407960580f18"
+  instance_type        = "t2.micro"
+  subnet_id            = aws_subnet.private_subnet.id
+  key_name             = "deployer-key"
+  private_ip           = "10.0.1.20"
   iam_instance_profile = aws_iam_instance_profile.ec2_ssm_instance_profile.name
 
 
@@ -100,12 +100,12 @@ resource "aws_instance" "attack_vm" {
 }
 
 resource "aws_instance" "bastion" {
-  ami           = "ami-08da5407960580f18" # Utilisez le même AMI que vos autres VMs
-  instance_type = "t2.micro"
-  subnet_id     = aws_subnet.private_subnet.id
-  key_name      = "deployer-key"
+  ami                         = "ami-08da5407960580f18" # Utilisez le même AMI que vos autres VMs
+  instance_type               = "t2.micro"
+  subnet_id                   = aws_subnet.private_subnet.id
+  key_name                    = "deployer-key"
   associate_public_ip_address = true
-  iam_instance_profile = aws_iam_instance_profile.ec2_ssm_instance_profile.name
+  iam_instance_profile        = aws_iam_instance_profile.ec2_ssm_instance_profile.name
 
   tags = {
     Name = "Bastion-Host"
