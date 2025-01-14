@@ -98,3 +98,24 @@ resource "aws_instance" "attack_vm" {
               apt update && apt -y install kali-linux-headless
             EOF
 }
+
+resource "aws_instance" "bastion" {
+  ami           = "ami-08da5407960580f18" # Utilisez le même AMI que vos autres VMs
+  instance_type = "t2.micro"
+  subnet_id     = aws_subnet.private_subnet.id
+  key_name      = "deployer-key"
+  associate_public_ip_address = true
+  iam_instance_profile = aws_iam_instance_profile.ec2_ssm_instance_profile.name
+
+  tags = {
+    Name = "Bastion-Host"
+  }
+
+  user_data = <<-EOF
+              #!/bin/bash
+              apt update -y
+              apt install -y amazon-ssm-agent
+              sudo systemctl enable amazon-ssm-agent
+              sudo systemctl start amazon-ssm-agent
+            EOF
+}
