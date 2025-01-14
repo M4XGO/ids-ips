@@ -15,3 +15,6 @@ variable "source_code_path" {
   type        = string
   default = "./lambda_function.zip"
 }
+
+data "aws_region" "current" {
+}
