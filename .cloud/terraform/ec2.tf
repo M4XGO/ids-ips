@@ -43,10 +43,6 @@ resource "aws_instance" "suricata_vm" {
               apt update -y
               apt install -y suricata iptables iptables-persistent
 
-              sudo apt install -y amazon-ssm-agent
-              sudo systemctl enable amazon-ssm-agent
-              sudo systemctl start amazon-ssm-agent
-
               # Activer le forwarding réseau
               echo 1 > /proc/sys/net/ipv4/ip_forward
               sed -i 's/#net.ipv4.ip_forward=1/net.ipv4.ip_forward=1/' /etc/sysctl.conf
@@ -119,9 +115,6 @@ resource "aws_instance" "web_vm" {
               #!/bin/bash
               apt update -y
               apt install -y docker.io
-              sudo apt install -y amazon-ssm-agent
-              sudo systemctl enable amazon-ssm-agent
-              sudo systemctl start amazon-ssm-agent
               docker run -d -p 80:80 nginx
             EOF
 }
@@ -170,14 +163,13 @@ resource "aws_instance" "attack_vm" {
               #!/bin/bash
               apt update -y
               apt install -y docker.io
-              sudo apt install -y amazon-ssm-agent
-              sudo systemctl enable amazon-ssm-agent
-              sudo systemctl start amazon-ssm-agent
               docker pull kalilinux/kali-rolling
               docker run -it kalilinux/kali-rolling /bin/bash
               apt update && apt -y install kali-linux-headless
             EOF
 }
+
+############ BASTION HOST ############
 
 resource "aws_instance" "bastion" {
   ami                         = "ami-08da5407960580f18"
@@ -185,27 +177,19 @@ resource "aws_instance" "bastion" {
   subnet_id                   = aws_subnet.public_subnet.id
   key_name                    = "deployer-key"
   associate_public_ip_address = true
-  iam_instance_profile        = aws_iam_instance_profile.ec2_ssm_instance_profile.name
   vpc_security_group_ids      = [aws_security_group.bastion_sg.id]
-
-  tags = {
-    Name = "Bastion-Host"
-  }
 
   user_data = <<-EOF
               #!/bin/bash
               apt update -y
-              apt install -y amazon-ssm-agent iptables iptables-persistent
-              sudo systemctl enable amazon-ssm-agent
-              sudo systemctl start amazon-ssm-agent
+              apt install -y openssh-server
 
-              # Activer le forwarding réseau
-              echo 1 > /proc/sys/net/ipv4/ip_forward
-              sed -i 's/#net.ipv4.ip_forward=1/net.ipv4/ip_forward=1/' /etc/sysctl.conf
-              sysctl -p
-
-              # Configurer iptables pour le NAT
-              iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
-              iptables-save > /etc/iptables/rules.v4
+              # Configuration SSH
+              sed -i 's/PasswordAuthentication no/PasswordAuthentication yes/' /etc/ssh/sshd_config
+              systemctl restart ssh
             EOF
+
+  tags = {
+    Name = "Bastion-Host"
+  }
 }
