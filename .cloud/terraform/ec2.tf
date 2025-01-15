@@ -21,7 +21,7 @@ resource "aws_network_interface" "suricata_vm_eni_public" {
 }
 
 resource "aws_instance" "suricata_vm" {
-  ami                  = "ami-08da5407960580f18"
+  ami                  = "ami-09be70e689bddcef5"
   instance_type        = "t2.micro"
   key_name             = "deployer-key"
   iam_instance_profile = aws_iam_instance_profile.ec2_ssm_instance_profile.name
@@ -94,7 +94,7 @@ resource "aws_network_interface" "web_vm_eni_public" {
 }
 
 resource "aws_instance" "web_vm" {
-  ami                  = "ami-08da5407960580f18"
+  ami                  = "ami-09be70e689bddcef5"
   instance_type        = "t2.micro"
   key_name             = "deployer-key"
   iam_instance_profile = aws_iam_instance_profile.ec2_ssm_instance_profile.name
@@ -142,7 +142,7 @@ resource "aws_network_interface" "attack_vm_eni_public" {
 }
 
 resource "aws_instance" "attack_vm" {
-  ami                  = "ami-08da5407960580f18"
+  ami                  = "ami-09be70e689bddcef5"
   instance_type        = "t2.micro"
   key_name             = "deployer-key"
   iam_instance_profile = aws_iam_instance_profile.ec2_ssm_instance_profile.name
