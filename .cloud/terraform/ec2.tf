@@ -9,41 +9,19 @@ resource "aws_instance" "suricata_vm" {
 
   user_data = <<-EOT
     #!/bin/bash
-    yum update -y
+    sudo yum update -y
+    sudo yum install -y suricata iptables-services
 
-    # Installation de Suricata et CloudWatch Agent
-    amazon-linux-extras enable epel
-    yum install -y suricata jq htop amazon-cloudwatch-agent
+    # Activer l’IP forwarding
+    sudo echo 1 > /proc/sys/net/ipv4/ip_forward
+    sudo sed -i 's/^#net.ipv4.ip_forward=1/net.ipv4.ip_forward=1/' /etc/sysctl.conf
 
-    # Configuration de Suricata
-    echo "RUN=yes" > /etc/default/suricata
-    suricata -i eth0 --init-errors-fatal
+    # Rediriger HTTP (port 80) vers la VM Web (10.0.0.96:80 par ex.)
+    sudo iptables -t nat -A PREROUTING -p tcp --dport 80 -j DNAT --to-destination 10.0.0.96:80
+    sudo iptables -A FORWARD -p tcp -d 10.0.0.96 --dport 80 -j ACCEPT
+    sudo service iptables save
 
-    # Configuration du CloudWatch Agent pour relayer eve.json
-    cat << EOF > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
-    {
-      "logs": {
-        "logs_collected": {
-          "files": {
-            "collect_list": [
-              {
-                "file_path": "/var/log/suricata/eve.json",
-                "log_group_name": "suricata-logs",
-                "log_stream_name": "{instance_id}"
-              }
-            ]
-          }
-        },
-        "log_stream_name": "suricata-eve-logs",
-        "region": "eu-west-3"
-      }
-    }
-    EOF
-
-    systemctl enable amazon-cloudwatch-agent
-    systemctl start amazon-cloudwatch-agent
-
-    # Démarrage de Suricata
+    # Installer et démarrer Suricata
     systemctl enable suricata
     systemctl start suricata
   EOT
@@ -52,7 +30,7 @@ resource "aws_instance" "suricata_vm" {
 }
 
 resource "aws_instance" "web_vm" {
-  ami                    = "ami-0b7174cd777d2d9ff"
+  ami                    = "ami-031e4310b9132e755" #ubuntu with apache pre-installed
   instance_type          = "t2.micro"
   subnet_id              = aws_subnet.main_subnet.id
   associate_public_ip_address = false
