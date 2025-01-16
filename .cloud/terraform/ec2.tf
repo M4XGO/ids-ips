@@ -9,21 +9,57 @@ resource "aws_instance" "suricata_vm" {
 
   user_data = <<-EOT
     #!/bin/bash
+    # Installation des packages
     sudo yum update -y
     sudo yum install -y suricata iptables-services
+    sudo amazon-linux-extras install nginx1 -y
 
-    # Activer l’IP forwarding
+    # Configuration IP forwarding
     sudo echo 1 > /proc/sys/net/ipv4/ip_forward
-    sudo sed -i 's/^#net.ipv4.ip_forward=1/net.ipv4.ip_forward=1/' /etc/sysctl.conf
+    sudo sysctl -p
 
-    # Rediriger HTTP (port 80) vers la VM Web (10.0.0.96:80 par ex.)
-    sudo iptables -t nat -A PREROUTING -p tcp --dport 80 -j DNAT --to-destination 10.0.0.96:80
-    sudo iptables -A FORWARD -p tcp -d 10.0.0.96 --dport 80 -j ACCEPT
+    # Configuration iptables
+    sudo iptables -F
+    sudo iptables -t nat -F
+    
+    # Accepter le trafic HTTP entrant
+    sudo iptables -A INPUT -p tcp --dport 80 -j ACCEPT
+    sudo iptables -A INPUT -i eth0 -p tcp --dport 80 -j ACCEPT
+    
+    # Configurer le NAT
+    sudo iptables -t nat -A PREROUTING -i eth0 -p tcp --dport 80 -j DNAT --to 10.0.0.98:80
+    sudo iptables -A FORWARD -p tcp -d 10.0.0.98 --dport 80 -j ACCEPT
+    sudo iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+    
+    # Sauvegarder iptables
     sudo service iptables save
+    
+    # Configuration Nginx
+    sudo tee /etc/nginx/conf.d/reverse-proxy.conf <<'EOF'
+    server {
+        listen 80;
+        server_name _;
+        
+        location / {
+            proxy_pass http://10.0.0.98:80;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+        }
+    }
+EOF
 
-    # Installer et démarrer Suricata
-    systemctl enable suricata
-    systemctl start suricata
+    # Redémarrer les services
+    sudo systemctl enable nginx
+    sudo systemctl restart nginx
+
+    sudo amazon-linux-extras enable epel
+    sudo yum clean metadata
+    sudo yum install -y epel-release
+    sudo yum install -y suricata
+    sudo systemctl enable suricata
+    sudo systemctl restart suricata
   EOT
 
   tags = { Name = "Suricata-VM" }
