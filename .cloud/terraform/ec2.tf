@@ -27,8 +27,8 @@ resource "aws_instance" "suricata_vm" {
     sudo iptables -A INPUT -i eth0 -p tcp --dport 80 -j ACCEPT
     
     # Configurer le NAT
-    sudo iptables -t nat -A PREROUTING -i eth0 -p tcp --dport 80 -j DNAT --to 10.0.0.98:80
-    sudo iptables -A FORWARD -p tcp -d 10.0.0.98 --dport 80 -j ACCEPT
+    sudo iptables -t nat -A PREROUTING -i eth0 -p tcp --dport 80 -j DNAT --to ${aws_instance.web_vm.private_ip}:80
+    sudo iptables -A FORWARD -p tcp -d ${aws_instance.web_vm.private_ip} --dport 80 -j ACCEPT
     sudo iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
     
     # Sauvegarder iptables
@@ -41,7 +41,7 @@ resource "aws_instance" "suricata_vm" {
         server_name _;
         
         location / {
-            proxy_pass http://10.0.0.98:80;
+            proxy_pass http://${aws_instance.web_vm.private_ip}:80;
             proxy_set_header Host $host;
             proxy_set_header X-Real-IP $remote_addr;
             proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -50,16 +50,78 @@ resource "aws_instance" "suricata_vm" {
     }
 EOF
 
-    # Redémarrer les services
-    sudo systemctl enable nginx
-    sudo systemctl restart nginx
+  # Redémarrer les services
+  sudo systemctl enable nginx
+  sudo systemctl restart nginx
 
-    sudo amazon-linux-extras enable epel
-    sudo yum clean metadata
-    sudo yum install -y epel-release
-    sudo yum install -y suricata
-    sudo systemctl enable suricata
+  sudo amazon-linux-extras enable epel
+  sudo yum clean metadata
+  sudo yum install -y epel-release
+  sudo yum install -y suricata
+  sudo systemctl enable suricata
+  sudo systemctl restart suricata
+
+  # Installation CloudWatch Agent
+  sudo yum install -y amazon-cloudwatch-agent
+
+  # Création du répertoire .aws
+  sudo mkdir -p /root/.aws/
+
+  # Copier les credentials depuis la var shared_credentials_file
+
+
+
+  # ################# TODO CHANGE THAT METHOD? 
+  # sudo cp ${var.shared_credential_file} /root/.aws/credentials
+
+
+
+
+EOF
+
+    # Configuration CloudWatch Agent
+    sudo tee /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json <<'EOF'
+    {
+      "agent": {
+        "region": "eu-west-3"
+      },
+      "logs": {
+        "logs_collected": {
+          "files": {
+            "collect_list": [
+              {
+                "file_path": "/var/log/suricata/fast.log",
+                "log_group_name": "/aws/suricata/logs",
+                "log_stream_name": "{instance_id}"
+              }
+            ]
+          }
+        }
+      }
+    }
+EOF
+
+    # Démarrage CloudWatch Agent
+    sudo systemctl enable amazon-cloudwatch-agent
+    sudo systemctl start amazon-cloudwatch-agent
+
+
+    sudo sed -i 's/community-id: false/community-id: true/' /etc/suricata/suricata.yaml
+    
+        sudo tee -a /etc/suricata/suricata.yaml <<'EOF'
+        detect-engine:
+          - rule-reload: true
+    EOF
     sudo systemctl restart suricata
+    sudo suricata-update
+    sudo suricata -T -c /etc/suricata/suricata.yaml
+    sudo systemctl status suricata
+    sudo suricata-update --no-check-certificate update-sources
+    sudo suricata-update list-sources
+    sudo suricata-update enable-source et/open
+    sudo systemctl restart suricata
+    sudo suricata-update
+    sudo suricata -T -c /etc/suricata/suricata.yaml -v
   EOT
 
   tags = { Name = "Suricata-VM" }

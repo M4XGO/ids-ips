@@ -18,3 +18,10 @@ variable "source_code_path" {
 
 data "aws_region" "current" {
 }
+
+variable "shared_credential_file" {
+  description = "Chemin vers le fichier de credentials partagés"
+  type        = string
+  default     = ".aws/credentials.ini"
+  
+}
