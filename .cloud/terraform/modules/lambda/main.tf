@@ -1,10 +1,12 @@
 resource "aws_lambda_function" "my_lambda" {
-  function_name = var.function_name
-  runtime       = "python3.8"
-  handler       = "lambda_function.lambda_handler"
-  role          = aws_iam_role.lambda_role.arn
-  filename      = "lambda_function.zip"
-  source_code_hash = filebase64sha256("lambda_function.zip")
+  filename         = "${path.module}/lambda_function.zip"
+  function_name    = var.function_name
+  role            = aws_iam_role.lambda_role.arn
+  handler         = "lambda_function.lambda_handler"
+  source_code_hash = filebase64sha256(var.source_code_path)
+  runtime         = "python3.8"
+  timeout         = 30
+  memory_size     = 256
 
   environment {
     variables = {
@@ -15,11 +17,9 @@ resource "aws_lambda_function" "my_lambda" {
 
 resource "aws_cloudwatch_log_subscription_filter" "suricata_logs_to_lambda" {
   name            = "suricata_logs_to_lambda"
-  log_group_name  = var.log_group_name
-  filter_pattern  = ""
+  log_group_name  = var.log_group_name    # ex: "/aws/suricata/logs"
+  filter_pattern  = ""                   # déclenchement sur tous les logs
   destination_arn = aws_lambda_function.my_lambda.arn
-  # role_arn        = aws_iam_role.lambda_role.arn
-
 }
 
 resource "aws_lambda_permission" "allow_cloudwatch_logs" {
@@ -32,18 +32,15 @@ resource "aws_lambda_permission" "allow_cloudwatch_logs" {
 
 resource "aws_iam_role" "lambda_role" {
   name = "${var.function_name}_role"
-
   assume_role_policy = jsonencode({
-    Version = "2012-10-17"
+    Version = "2012-10-17",
     Statement = [
       {
-        Action = "sts:AssumeRole"
-        Principal = {
-          Service = "lambda.amazonaws.com"
-        }
-        Effect = "Allow"
-        Sid    = ""
-      },
+        Action = "sts:AssumeRole",
+        Principal = { Service = "lambda.amazonaws.com" },
+        Effect   = "Allow",
+        Sid      = ""
+      }
     ]
   })
 }
