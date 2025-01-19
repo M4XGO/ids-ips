@@ -6,6 +6,7 @@ resource "aws_instance" "suricata_vm" {
   vpc_security_group_ids = [aws_security_group.suricata_sg.id]
   key_name               = "deployer-key"
   source_dest_check      = false  # important pour faire du forwarding
+  iam_instance_profile   = aws_iam_instance_profile.ec2_instance_profile.name
 
   user_data = <<-EOT
     #!/bin/bash
@@ -35,52 +36,68 @@ resource "aws_instance" "suricata_vm" {
     sudo service iptables save
     
     # Configuration Nginx
-    sudo tee /etc/nginx/conf.d/reverse-proxy.conf <<'EOF'
+    cat > /etc/nginx/conf.d/reverse-proxy.conf << 'NGINXEOF'
     server {
         listen 80;
         server_name _;
         
         location / {
             proxy_pass http://${aws_instance.web_vm.private_ip}:80;
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_set_header Host \$host;
+            proxy_set_header X-Real-IP \$remote_addr;
+            proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto \$scheme;
         }
     }
-EOF
+NGINXEOF
 
-  # Redémarrer les services
-  sudo systemctl enable nginx
-  sudo systemctl restart nginx
+    # Redémarrer les services
+    sudo systemctl enable nginx
+    sudo systemctl restart nginx
 
-  sudo amazon-linux-extras enable epel
-  sudo yum clean metadata
-  sudo yum install -y epel-release
-  sudo yum install -y suricata
-  sudo systemctl enable suricata
-  sudo systemctl restart suricata
+    sudo amazon-linux-extras enable epel
+    sudo yum clean metadata
+    sudo yum install -y epel-release
+    sudo yum install -y suricata
+    sudo systemctl enable suricata
+    sudo systemctl restart suricata
 
-  # Installation CloudWatch Agent
-  sudo yum install -y amazon-cloudwatch-agent
+    sudo systemctl restart suricata
+    sudo sed -i 's/community-id: false/community-id: true/' /etc/suricata/suricata.yaml
+    sudo service suricata restart
+    sudo suricata-update
+    sudo suricata-update --no-check-certificate update-sources
+    sudo suricata-update list-sources
+    sudo suricata-update enable-source et/open
+    sudo suricata-update
+    sudo suricata -T -c /etc/suricata/suricata.yaml -v
+    sudo suricata-update -o /etc/suricata/rules
+    sudo suricata -T -c /etc/suricata/suricata.yaml -v
 
-  # Création du répertoire .aws
-  sudo mkdir -p /root/.aws/
+    sudo touch /var/lib/suricata/rules/local.rules
+    sudo bash -c 'cat > /var/lib/suricata/rules/local.rules << "RULESEOF"
+alert tcp any any -> any 80 (msg:"DDoS SYN flood detected"; flow:to_server; flags:S; threshold:type both,track by_src,count 50,seconds 5; sid:1000005; rev:2;)
+alert tcp any any -> any 80 (msg:"Potential HTTP DDoS detected"; flow:to_server; flags:S; threshold:type both,track by_src,count 100,seconds 10; sid:1000006; rev:1;)
+RULESEOF'
 
-  # Copier les credentials depuis la var shared_credentials_file
+    sudo sed -i '/- suricata.rules/a\ - local.rules' /etc/suricata/suricata.yaml
+    
+    sudo chown -R suricata:suricata /etc/suricata/rules
+    sudo suricata-update -o /etc/suricata/rules
+    sudo suricata-update list-sources
+    sudo suricata-update enable-source et/open
+    sudo suricata -T -c /etc/suricata/suricata.yaml -v
+    sudo suricata-update --no-check-certificate update-sources
+    sudo systemctl restart suricata
 
+    # Installation CloudWatch Agent
+    sudo yum install -y amazon-cloudwatch-agent
 
-
-  # ################# TODO CHANGE THAT METHOD? 
-  # sudo cp ${var.shared_credential_file} /root/.aws/credentials
-
-
-
-
-EOF
+    # # Création du répertoire .aws
+    # sudo mkdir -p /root/.aws/
 
     # Configuration CloudWatch Agent
-    sudo tee /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json <<'EOF'
+    cat > /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json << 'CWEOF'
     {
       "agent": {
         "region": "eu-west-3"
@@ -91,37 +108,19 @@ EOF
             "collect_list": [
               {
                 "file_path": "/var/log/suricata/fast.log",
-                "log_group_name": "/aws/suricata/logs",
-                "log_stream_name": "{instance_id}"
+                "log_group_name": "/suricata/logs",
+                "log_stream_name": "suricata-log-stream"
               }
             ]
           }
         }
       }
     }
-EOF
+CWEOF
 
     # Démarrage CloudWatch Agent
     sudo systemctl enable amazon-cloudwatch-agent
     sudo systemctl start amazon-cloudwatch-agent
-
-
-    sudo sed -i 's/community-id: false/community-id: true/' /etc/suricata/suricata.yaml
-    
-        sudo tee -a /etc/suricata/suricata.yaml <<'EOF'
-        detect-engine:
-          - rule-reload: true
-    EOF
-    sudo systemctl restart suricata
-    sudo suricata-update
-    sudo suricata -T -c /etc/suricata/suricata.yaml
-    sudo systemctl status suricata
-    sudo suricata-update --no-check-certificate update-sources
-    sudo suricata-update list-sources
-    sudo suricata-update enable-source et/open
-    sudo systemctl restart suricata
-    sudo suricata-update
-    sudo suricata -T -c /etc/suricata/suricata.yaml -v
   EOT
 
   tags = { Name = "Suricata-VM" }
